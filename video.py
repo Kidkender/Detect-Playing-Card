@@ -6,7 +6,7 @@ from ultralytics import YOLO
 path_model = "model.pt"
 model = YOLO(path_model)
 
-vide_path ="../../../../Videos/Captures/Terabet — Mozilla Firefox 2024-08-13 18-11-59.mp4"
+vide_path ="../../../../Videos/2024-08-12 22-35-03.mp4"
 
 colors = {}
 for class_id in range(len(model.names)):
@@ -41,7 +41,8 @@ while cap.isOpened():
 
     result = model.predict(frame_resized, save=False, conf=0.4, iou=0.7)
 
-
+    detected_boxes = []
+    
     for box in result[0].boxes:
         x1, y1, x2, y2 = map(int, box.xyxy[0])
         
@@ -50,15 +51,42 @@ while cap.isOpened():
         x2 = int(x2 * (x_end - x_start) / 640) + x_start
         y2 = int(y2 * (y_end - y_start) / 640) + y_start
 
+        detected_boxes.append([x1, y1, x2, y2, int(box.cls[0])])
         class_id = int(box.cls[0])
         color = colors[class_id]
 
-        # label = f"{result[0].names[class_id]} {box.conf[0]:.2f}"
-        label = f"{result[0].names[class_id]}"
+    if len(detected_boxes) >= 2:
+        min_distance = float('inf')
+        closest_pair = None
+        
+        for i in range(len(detected_boxes)):
+            for j in range(i + 1, len(detected_boxes)):
+                distance = calculate_distance(detected_boxes[i], detected_boxes[j])
+                if distance < min_distance:
+                    min_distance = distance
+                    closest_pair = (detected_boxes[i], detected_boxes[j])
+        
+        for box in detected_boxes:
+            x1, y1, x2, y2, class_id = box 
+            color = colors[class_id]
+            
+            # label = f"{result[0].names[class_id]} {box.conf[0]:.2f}"
+            label = f"{result[0].names[class_id]}"
 
-        cv2.rectangle(frame, (x1, y1), (x2, y2), color, 2)
-        cv2.putText(frame, label, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, color, 2)
-  
+            cv2.rectangle(frame, (x1, y1), (x2, y2), color, 2)
+            cv2.putText(frame, label, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, color, 2)
+    
+
+        if closest_pair:
+            card1, card2 = closest_pair
+            name_card1 = result[0].names[card1[4]]
+            name_card2 = result[0].names[card2[4]]
+            print(f"Playing card in hand: {name_card1} - {name_card2}")
+
+            for box in closest_pair:
+                x1, y1, x2, y2, class_id = box
+                cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 255) )
+            
     
     # result_img = result[0].plot()
     cv2.imshow("Real-time detection", frame)
