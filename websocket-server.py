@@ -8,7 +8,7 @@ async def handler(websocket):
     clients.add(websocket)
     try:
         async for message in websocket:
-            print("message: ", message)
+            print("Received message:", message)
             pass  
     finally:
         clients.remove(websocket)
@@ -20,7 +20,7 @@ async def broadcast(data):
 
 async def main():
     async with websockets.serve(handler, "localhost", 8765):
-        print("Start server")
+        print("WebSocket server started at ws://localhost:8765")
         await asyncio.Future()  
 
 if __name__ == "__main__":
