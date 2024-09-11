@@ -48,11 +48,13 @@ async def main():
             x_end = int(width * 0.8)   
             y_start = int(height * 0.1)
             y_end = int(height * 0.9)   
+            opponent_threshold = int(height * 0.2)  # 20% from the top
+
 
             frame_cropped = frame[y_start:y_end, x_start:x_end]
             frame_resized = cv2.resize(frame_cropped, (640, 640))
 
-            result = model.predict(frame_resized, save=False, conf=0.4, iou=0.7)
+            result = model.predict(frame_resized, save=False, conf=0.4, iou=0.5)
 
             detected_boxes = []
             
@@ -60,16 +62,17 @@ async def main():
             data_to_send = {
                 "all_card": list(result[0].names[int(box.cls[0])] for box in result[0].boxes),
                 "card_in_hand": {},
-                "card_in_table": []
+                "card_in_table": [],
+                "card_opponent": []
             }
             
             for box in result[0].boxes:
                 x1, y1, x2, y2 = map(int, box.xyxy[0])
                 
-                x1 = int(x1 * (x_end - x_start) / 640) + x_start
-                y1 = int(y1 * (y_end - y_start) / 640) + y_start
-                x2 = int(x2 * (x_end - x_start) / 640) + x_start
-                y2 = int(y2 * (y_end - y_start) / 640) + y_start
+                # x1 = int(x1 * (x_end - x_start) / 640) + x_start
+                # y1 = int(y1 * (y_end - y_start) / 640) + y_start
+                # x2 = int(x2 * (x_end - x_start) / 640) + x_start
+                # y2 = int(y2 * (y_end - y_start) / 640) + y_start
 
                 detected_boxes.append([x1, y1, x2, y2, int(box.cls[0])])
                 class_id = int(box.cls[0])
@@ -95,7 +98,21 @@ async def main():
                     cv2.rectangle(frame, (x1, y1), (x2, y2), color, 2)
                     cv2.putText(frame, label, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, color, 2)
             
-
+                # detected_boxes is array of objects detected
+                # this is box: [204, 380, 215, 411, 10] 
+                # Index 4 is class_id
+                
+                cards_on_table_filtered = [
+                    card for card in detected_boxes 
+                    if card[1] > opponent_threshold  # Ensure the top-left corner (y1) is below the threshold
+                ]
+                
+                # Position of opponent is top, get cards 
+                cards_opponent = [
+                    result[0].names[card[4]] for card in detected_boxes
+                    if card[1] <= opponent_threshold
+                ]
+                
                 if closest_pair:
                     card1, card2 = closest_pair
                     name_card1 = result[0].names[card1[4]]
@@ -104,16 +121,18 @@ async def main():
                         "card_1": name_card1,
                         "card_2": name_card2
                     }
-                    print(f"Playing card in hand: {name_card1} - {name_card2}")
 
                     for box in closest_pair:
                         x1, y1, x2, y2, class_id = box
                         cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 255), 2)
-            
-                all_cards_set = set(data_to_send["all_card"])
+                
+                # result is Boxes object
+                # names is all class 
+                # result[0].names[int(box[4])] to get class name
+                all_cards_set = set(result[0].names[int(box[4])] for box in cards_on_table_filtered)
                 cards_in_hand_set = set(data_to_send["card_in_hand"].values())
                 data_to_send["card_in_table"] = list(all_cards_set - cards_in_hand_set)
-            
+                data_to_send["card_opponent"] = cards_opponent
             await send_data(data_to_send)
 
             # Uncomment if you want to see the video output
