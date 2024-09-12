@@ -1,12 +1,12 @@
 import cv2
-import math
-import random
-from ultralytics import YOLO
 import mss
-import numpy as np 
-import websockets
+import math
 import json
+import random
 import asyncio
+import websockets
+import numpy as np 
+from ultralytics import YOLO
 
 path_model = "model.pt"
 model = YOLO(path_model)
@@ -30,6 +30,8 @@ async def send_data(data):
 
 async def main():
     created_window = False
+    card_in_table_with_confidence = []
+
     with mss.mss() as sct:
         monitor = sct.monitors[1]
         
@@ -68,13 +70,14 @@ async def main():
             
             for box in result[0].boxes:
                 x1, y1, x2, y2 = map(int, box.xyxy[0])
+                confidence_score = float(box.conf[0])
                 
                 # x1 = int(x1 * (x_end - x_start) / 640) + x_start
                 # y1 = int(y1 * (y_end - y_start) / 640) + y_start
                 # x2 = int(x2 * (x_end - x_start) / 640) + x_start
                 # y2 = int(y2 * (y_end - y_start) / 640) + y_start
 
-                detected_boxes.append([x1, y1, x2, y2, int(box.cls[0])])
+                detected_boxes.append([x1, y1, x2, y2, int(box.cls[0]), confidence_score])
                 class_id = int(box.cls[0])
                 color = colors[class_id]
 
@@ -90,24 +93,19 @@ async def main():
                             closest_pair = (detected_boxes[i], detected_boxes[j])
                 
                 for box in detected_boxes:
-                    x1, y1, x2, y2, class_id = box 
+                    x1, y1, x2, y2, class_id, _ = box 
                     color = colors[class_id]
                     
                     label = f"{result[0].names[class_id]}"
 
                     cv2.rectangle(frame, (x1, y1), (x2, y2), color, 2)
-                    cv2.putText(frame, label, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, color, 2)
-            
-                # detected_boxes is array of objects detected
-                # this is box: [204, 380, 215, 411, 10] 
-                # Index 4 is class_id
+                    cv2.putText(frame, label, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, color, 2)        
                 
                 cards_on_table_filtered = [
                     card for card in detected_boxes 
-                    if card[1] > opponent_threshold  # Ensure the top-left corner (y1) is below the threshold
+                    if card[1] > opponent_threshold 
                 ]
                 
-                # Position of opponent is top, get cards 
                 cards_opponent = [
                     result[0].names[card[4]] for card in detected_boxes
                     if card[1] <= opponent_threshold
@@ -123,16 +121,32 @@ async def main():
                     }
 
                     for box in closest_pair:
-                        x1, y1, x2, y2, class_id = box
+                        x1, y1, x2, y2, class_id, _ = box
                         cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 255), 2)
                 
-                # result is Boxes object
-                # names is all class 
-                # result[0].names[int(box[4])] to get class name
                 all_cards_set = set(result[0].names[int(box[4])] for box in cards_on_table_filtered)
                 cards_in_hand_set = set(data_to_send["card_in_hand"].values())
-                data_to_send["card_in_table"] = list(all_cards_set - cards_in_hand_set)
+                # # data_to_send["card_in_table"] = list(all_cards_set - cards_in_hand_set)
                 data_to_send["card_opponent"] = cards_opponent
+                
+                # New
+                card_in_table_with_confidence = []
+                for box in cards_on_table_filtered:
+                    card_name = result[0].names[int(box[4])]
+                    confidence_score = box[5]
+                    if card_name not in cards_in_hand_set:
+                        card_in_table_with_confidence.append({
+                            'card_name': card_name,
+                            'confidence': confidence_score
+                        })
+
+                sorted_card_in_table = sorted(card_in_table_with_confidence, key=lambda x: x['confidence'], reverse=True)
+
+                top_5_cards = sorted_card_in_table[:5]
+
+                data_to_send["card_in_table"] = [card["card_name"] for card in top_5_cards]
+
+    
             await send_data(data_to_send)
 
             # Uncomment if you want to see the video output

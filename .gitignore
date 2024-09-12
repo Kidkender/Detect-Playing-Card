@@ -2,6 +2,7 @@
 .vscode
 datasets
 Terrabet-3
+Terrabet-5
 yolov8s_playing_cards.pt
 yolo.ipynb
 images
