@@ -117,7 +117,7 @@ prometheus-fastapi-instrumentator==6.0.0
 prometheus_client==0.20.0
 prompt_toolkit==3.0.47
 proto-plus==1.24.0
-protobuf==4.25.8
+protobuf==6.33.5
 psutil==6.0.0
 PuLP==2.9.0
 pure_eval==0.2.3
