@@ -186,7 +186,7 @@ tzlocal==5.2
 ultralytics==8.2.76
 ultralytics-thop==2.0.0
 uritemplate==4.1.1
-urllib3==2.6.3
+urllib3==2.7.0
 wcwidth==0.2.13
 websocket-client==1.8.0
 Werkzeug==3.0.3
