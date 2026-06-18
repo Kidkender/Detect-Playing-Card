@@ -100,7 +100,7 @@ numpy==1.26.4
 omegaconf==2.3.0
 onnxruntime==1.15.1
 openai==1.40.8
-opencv-python==4.8.0.76
+opencv-python==4.8.1.78
 opencv-python-headless==4.10.0.84
 opt-einsum==3.3.0
 optree==0.12.1
