@@ -122,7 +122,7 @@ psutil==6.0.0
 PuLP==2.9.0
 pure_eval==0.2.3
 py-cpuinfo==9.0.0
-pyasn1==0.6.0
+pyasn1==0.6.4
 pyasn1_modules==0.4.0
 pybase64==1.4.0
 pycparser==2.22
